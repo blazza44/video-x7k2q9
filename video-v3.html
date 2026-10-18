@@ -719,7 +719,7 @@ const projeAdi=()=>{
  let slug=t.replace(/[^a-z0-9\s]/g,' ').trim().split(/\s+/).filter(Boolean).slice(0,5).join('-').slice(0,40)||'video';
  let n=1;try{n=(parseInt(localStorage.getItem('vidno')||'0',10)||0)+1;localStorage.setItem('vidno',String(n))}catch(e){n=Date.now()%100000}
  return slug+'-'+String(n).padStart(3,'0')+'.mp4'};
-const showPrev=b=>{const old=document.getElementById('pvm');if(old)old.remove();const u=URL.createObjectURL(b);const fname=projeAdi();
+const showPrev=b=>{if(window.__autoCatch){const f=window.__autoCatch;window.__autoCatch=null;f(b);return}const old=document.getElementById('pvm');if(old)old.remove();const u=URL.createObjectURL(b);const fname=projeAdi();
  const m=document.createElement('div');m.id='pvm';
  m.innerHTML='<div class="pvb"><h3>Video hazır</h3><video controls playsinline autoplay></video><div class="pva"><button class="p" id="pvd">İndir</button><button id="pvs">İndir ve sil</button></div><button class="p" id="pvy">▶ YouTube\'a yükle</button><button id="pvc" class="pvx">Kapat</button></div>';
  document.body.appendChild(m);const v=m.querySelector('video');v.src=u;
@@ -1440,6 +1440,7 @@ $('wmo').addEventListener('input',()=>{$('wmv').textContent='%'+$('wmo').value})
    x.onload=()=>{if(x.status>=200&&x.status<300){try{ok(JSON.parse(x.responseText))}catch(e){no(new Error('Yanıt okunamadı'))}}else no(new Error('Yükleme başarısız ('+x.status+')'))};
    x.onerror=()=>no(new Error('Bağlantı koptu, yükleme yarım kaldı'));x.send(blob)})}
  const copy=async t=>{try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}};
+ window.ytAuth={token,send};
  window.ytUpload=(blob,fname)=>{
   const old=g('yum');if(old)old.remove();
   const src=(g('tx')&&g('tx').value.trim())||'';
@@ -1452,7 +1453,8 @@ $('wmo').addEventListener('input',()=>{$('wmv').textContent='%'+$('wmo').value})
    '<button type="button" id="yun">↻ Başka başlık öner</button>'+
    '<label>Açıklama<textarea id="yud" rows="6"></textarea></label>'+
    '<label>Etiketler (virgülle)<input id="yug"></label>'+
-   '<label>Gizlilik<select id="yup"><option value="private">Gizli (önerilen: önce kontrol et)</option><option value="unlisted">Liste dışı</option><option value="public">Herkese açık</option></select></label>'+
+   '<label>Gizlilik<select id="yup"><option value="private">Gizli (önerilen: önce kontrol et)</option><option value="unlisted">Liste dışı</option><option value="public">Herkese açık</option><option value="schedule">Planlı yayın (zamanı gelince herkese açılır)</option></select></label>'+
+   '<div id="yus3" hidden style="display:none;gap:8px"><label>Yayın zamanı<input type="datetime-local" id="yud2"></label><label>Her gün şu saatte yayınla<input type="time" id="yuh" value="18:00"></label><small>Sıradaki boş gün otomatik seçilir; her yeni video bir sonraki güne planlanır. İstersen zamanı elle değiştirebilirsin.</small></div>'+
    '<details id="yuk"><summary>Google bağlantısı (bir kez ayarlanır)</summary><label style="margin-top:8px">OAuth istemci kimliği<input id="yuc" placeholder="123456-abc.apps.googleusercontent.com" autocomplete="off"></label>'+
    '<small>Google Cloud Console → YouTube Data API v3\'ü etkinleştir → Kimlik bilgileri → OAuth istemci kimliği (Web uygulaması). «Yetkili JavaScript kaynakları»na bu sayfanın adresini ekle (<b>'+E(location.origin==='null'?'dosya olarak açılan sayfa çalışmaz; https veya localhost gerekir':location.origin)+'</b>). Test modundaysa kendi hesabını «test kullanıcısı» olarak ekle.</small></details>'+
    '<progress id="yub" value="0" max="1" hidden></progress><div class="ys" id="yus"></div>'+
@@ -1466,6 +1468,14 @@ $('wmo').addEventListener('input',()=>{$('wmv').textContent='%'+$('wmo').value})
   if(!$y('yuc').value)$y('yuk').open=true;
   const msg=(t,c)=>{const s=$y('yus');if(s){s.textContent=t;s.className='ys'+(c?' '+c:'')}};
   let busy=false,url='';
+  const pad=n=>String(n).padStart(2,'0');
+  const toLocal=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  const nextSlot=()=>{const hm=($y('yuh').value||'18:00').split(':').map(Number);const now=Date.now()+15*60000;const last=Date.parse(LS.get('ytlast'))||0;
+   const d=new Date();d.setHours(hm[0]||0,hm[1]||0,0,0);let n=0;while((d.getTime()<=now||d.getTime()<=last)&&n<800){d.setDate(d.getDate()+1);n++}return d};
+  $y('yuh').value=LS.get('ythour')||'18:00';
+  const refSlot=()=>{$y('yud2').value=toLocal(nextSlot())};
+  const togSch=()=>{const on=$y('yup').value==='schedule';$y('yus3').hidden=!on;$y('yus3').style.display=on?'grid':'none';if(on)refSlot()};
+  $y('yup').onchange=togSch;$y('yuh').onchange=()=>{LS.set('ythour',$y('yuh').value);refSlot()};
   $y('yun').onclick=()=>{ti++;setT()};
   $y('yux').onclick=()=>{if(!busy)m.remove()};
   $y('yus2').onclick=async()=>{await copy($y('yut').value+'\n\n'+$y('yud').value+'\n\n'+$y('yug').value);msg('Başlık, açıklama ve etiketler kopyalandı. Studio açılıyor; videoyu önce «İndir» ile kaydetmeyi unutma.','o');window.open('https://www.youtube.com/upload','_blank')};
@@ -1474,19 +1484,24 @@ $('wmo').addEventListener('input',()=>{$('wmv').textContent='%'+$('wmo').value})
    if(busy)return;
    const cid=$y('yuc').value.trim();
    if(!cid){$y('yuk').open=true;msg('Önce OAuth istemci kimliğini gir (yukarıdaki «Google bağlantısı»).','e');return}
-   if(location.protocol==='file:'){$y('yuk').open=true;msg('Sayfa dosya olarak açıldığı için Google girişi çalışmaz. Sayfayı https adresinden veya localhost\'tan aç; ya da «Elle yükle» düğmesini kullan.','e');return}
+   if(!/^https?:$/.test(location.protocol)||location.origin==='null'){$y('yuk').open=true;msg('Sayfa dosya olarak açıldığı için Google girişi çalışmaz. Sayfayı https adresinden veya localhost\'tan aç; ya da «Elle yükle» düğmesini kullan.','e');return}
    LS.set('ytcid',cid);
    const title=$y('yut').value.replace(/[<>]/g,'').trim();if(!title){msg('Başlık boş olamaz.','e');return}
    let tags=$y('yug').value.split(',').map(x=>x.replace(/[<>]/g,'').trim()).filter(Boolean),len=0;
    tags=tags.filter(t=>{len+=t.length+(t.includes(' ')?4:2);return len<=480});
    const meta={snippet:{title,description:$y('yud').value.replace(/[<>]/g,'').slice(0,4900),tags,categoryId:'22',defaultLanguage:'tr',defaultAudioLanguage:'tr'},status:{privacyStatus:$y('yup').value,selfDeclaredMadeForKids:false}};
+   let schedAt=0;
+   if($y('yup').value==='schedule'){schedAt=Date.parse($y('yud2').value);
+    if(!schedAt||schedAt<Date.now()+10*60000){msg('Yayın zamanı en az 10 dakika sonrası olmalı.','e');return}
+    meta.status.privacyStatus='private';meta.status.publishAt=new Date(schedAt).toISOString()}
    busy=true;$y('yug2').disabled=true;$y('yux').disabled=true;const pb=$y('yub');pb.hidden=false;pb.value=0;
    try{
     msg('Google ile giriş yapılıyor…');const t=await token(cid);
     msg('Yükleniyor… %0');
     const res=await send(blob,meta,t,p=>{pb.value=p;msg('Yükleniyor… %'+Math.round(p*100))});
     url='https://youtu.be/'+res.id;pb.value=1;
-    msg('Yüklendi ✓ '+url+(meta.status.privacyStatus==='private'?' (gizli; YouTube Studio\'dan yayına alabilirsin)':'')+'. YouTube işlemeyi bitirene kadar kalite düşük görünebilir.','o');
+    if(schedAt){LS.set('ytlast',new Date(schedAt).toISOString());msg('Planlandı ✓ '+new Date(schedAt).toLocaleString('tr-TR',{dateStyle:'long',timeStyle:'short'})+' tarihinde yayınlanacak. '+url+' (o zamana kadar gizli görünür; Studio\'da doğrulayabilirsin)','o')}
+    else msg('Yüklendi ✓ '+url+(meta.status.privacyStatus==='private'?' (gizli; YouTube Studio\'dan yayına alabilirsin)':'')+'. YouTube işlemeyi bitirene kadar kalite düşük görünebilir.','o');
     $y('yuo').hidden=false;$y('yug2').textContent='Yüklendi ✓';
    }catch(e){
     msg(String(e&&e.message||e),'e');$y('yug2').disabled=false;pb.hidden=true;
@@ -1515,6 +1530,88 @@ $('wmo').addEventListener('input',()=>{$('wmv').textContent='%'+$('wmo').value})
  g('setb').onclick=()=>dlg.showModal();
  g('setok').onclick=g('setx').onclick=()=>dlg.close();
  dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+})();
+</script>
+<script>
+/* ---- Otomatik üret + YouTube'a planla: günde N video, sıradaki boş saate ---- */
+(()=>{
+ const easy=document.getElementById('easy');if(!easy)return;
+ const g=i=>document.getElementById(i);
+ const LS={get:k=>{try{return localStorage.getItem(k)||''}catch(e){return''}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+ const box=document.createElement('section');box.className='cd';box.id='auto';
+ box.innerHTML='<b>Otomatik üret ve YouTube\'a planla</b>'+
+  '<div class="r"><label>Kaç video (en fazla 6)<input type="number" id="aun" min="1" max="6" value="5"></label><label>Günlük yayın saatleri<input type="text" id="auh" value="09:00, 12:00, 15:00, 18:00, 21:00"></label></div>'+
+  '<small id="aup"></small>'+
+  '<details><summary style="cursor:pointer;font-size:13px;color:#9aa5bd">Google bağlantısı</summary><label style="margin-top:8px">OAuth istemci kimliği<input type="text" id="auc" autocomplete="off"></label></details>'+
+  '<button class="p" id="aug">⚡ Otomatik başlat</button>'+
+  '<div class="act"><button id="aud" hidden>Durdur</button><button id="aur">Planı sıfırla</button></div>'+
+  '<div id="aul" class="hint"></div><button class="p" id="aut" hidden>Google girişini yenile</button>'+
+  '<small>Her video sıradaki boş saate planlanır; günün saatleri dolunca ertesi güne geçer. Üretim sürerken sayfayı ve ekranı açık tut, şarja tak.</small>';
+ easy.insertAdjacentElement('afterend',box);
+ g('auh').value=LS.get('auhours')||g('auh').value;g('aun').value=LS.get('aucount')||g('aun').value;g('auc').value=LS.get('ytcid');
+ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+ const fmt=d=>d.toLocaleString('tr-TR',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
+ const say=t=>{g('aul').textContent=t;try{st(t)}catch(e){}};
+ const hours=()=>g('auh').value.split(/[,;\s]+/).filter(x=>/^\d{1,2}:\d{2}$/.test(x)).map(x=>{const a=x.split(':').map(Number);return a[0]*60+a[1]}).filter(v=>v<1440).sort((a,b)=>a-b).filter((v,i,a)=>i===0||v!==a[i-1]);
+ const slotAfter=min=>{const hs=hours();if(!hs.length)return null;const d0=new Date();d0.setHours(0,0,0,0);
+  for(let day=0;day<800;day++)for(const m of hs){const c=new Date(d0);c.setDate(c.getDate()+day);c.setHours(Math.floor(m/60),m%60,0,0);if(c.getTime()>min)return c}return null};
+ const minNow=()=>Math.max(Date.now()+15*60000,Date.parse(LS.get('ytlast'))||0);
+ const count=()=>Math.max(1,Math.min(6,+g('aun').value||1));
+ const preview=()=>{const n=count();let min=minNow();const out=[];
+  for(let i=0;i<n;i++){const s=slotAfter(min);if(!s)break;out.push(s);min=s.getTime()}
+  g('aup').textContent=out.length?'Planlanacak: '+fmt(out[0])+(out.length>1?' … '+fmt(out[out.length-1]):'')+' ('+out.length+' video)':'Geçerli saat yok (örnek: 09:00, 12:00)'};
+ ['aun','auh'].forEach(i=>g(i).addEventListener('input',()=>{LS.set('auhours',g('auh').value);LS.set('aucount',g('aun').value);preview()}));
+ g('auc').addEventListener('change',()=>LS.set('ytcid',g('auc').value.trim()));
+ preview();
+ let run=false,stop=false,wl=null;
+ async function getTok(cid){
+  try{return await window.ytAuth.token(cid)}catch(e){
+   const b=g('aut');b.hidden=false;say('Google izni doldu veya yenilenemedi. Devam etmek için düğmeye bas.');
+   await new Promise(ok=>{b.onclick=ok});b.hidden=true;
+   return await window.ytAuth.token(cid)}}
+ async function one(i,n,cid){
+  const tx=g('tx'),go=g('go');
+  if(!tx.value.trim()){let c=0;try{c=(await tlist()).length}catch(e){}if(!c)throw new Error('Metin kütüphanesinde metin kalmadı. Ayarlar → Metin kütüphanesi bölümüne metin ekle.')}
+  let blob=null;window.__autoCatch=b=>{blob=b};
+  say('Video '+i+'/'+n+' üretiliyor… (ekranı açık tut)');
+  go.click();await sleep(400);while(go.disabled)await sleep(500);
+  window.__autoCatch=null;
+  if(stop)throw new Error('__stop');
+  if(!blob)throw new Error(g('st').textContent||'Video üretilemedi');
+  const text=tx.value.trim();
+  let r=null;try{r=window.ytBuild(text)}catch(e){}if(!r)throw new Error('Metinden başlık üretilemedi');
+  const slot=slotAfter(minNow());if(!slot)throw new Error('Geçerli yayın saati yok');
+  let tags=r.tags.split(',').map(x=>x.replace(/[<>]/g,'').trim()).filter(Boolean),len=0;
+  tags=tags.filter(t=>{len+=t.length+(t.includes(' ')?4:2);return len<=480});
+  const meta={snippet:{title:r.titles[0].replace(/[<>]/g,'').slice(0,100),description:r.desc.replace(/[<>]/g,'').slice(0,4900),tags,categoryId:'22',defaultLanguage:'tr',defaultAudioLanguage:'tr'},
+   status:{privacyStatus:'private',publishAt:slot.toISOString(),selfDeclaredMadeForKids:false}};
+  const tok=await getTok(cid);
+  say('Video '+i+'/'+n+' yükleniyor… %0');
+  await window.ytAuth.send(blob,meta,tok,p=>say('Video '+i+'/'+n+' yükleniyor… %'+Math.round(p*100)));
+  LS.set('ytlast',slot.toISOString());
+  try{await window.delUsedText()}catch(e){}
+  tx.value='';tx.dispatchEvent(new Event('input',{bubbles:true}));
+  return slot}
+ g('aug').onclick=async()=>{
+  if(run)return;
+  const cid=g('auc').value.trim();
+  if(!cid){g('auc').closest('details').open=true;say('Önce OAuth istemci kimliğini gir.');return}
+  if(!/^https?:$/.test(location.protocol)||location.origin==='null'){say('Sayfa bir web adresinden (https) açılmalı.');return}
+  if(!window.ytAuth||!window.ytBuild){say('YouTube modülü yüklenemedi, sayfayı yenile.');return}
+  if(!hours().length){say('Geçerli yayın saati yaz (örnek: 09:00, 12:00).');return}
+  const n=count();LS.set('ytcid',cid);run=true;stop=false;g('aug').disabled=true;g('aud').hidden=false;
+  const done=[];
+  try{
+   say('Google ile giriş yapılıyor…');await getTok(cid);
+   try{wl=await navigator.wakeLock.request('screen')}catch(e){}
+   for(let i=1;i<=n;i++){if(stop)break;done.push(await one(i,n,cid));preview()}
+   say(done.length?done.length+' video planlandı ✓ Son yayın: '+fmt(new Date(Date.parse(LS.get('ytlast'))))+'. Studio\'dan kontrol edebilirsin.':'Durduruldu.');
+  }catch(e){
+   const m=String(e&&e.message||e);
+   say(m==='__stop'?'Durduruldu. '+done.length+' video planlandı.':/quota/i.test(m)?'Günlük YouTube kotası doldu ('+done.length+' video planlandı). Yarın devam et.':'Hata: '+m+' ('+done.length+' video planlandı)');
+  }finally{run=false;g('aug').disabled=false;g('aud').hidden=true;try{wl&&wl.release()}catch(e){}wl=null;window.__autoCatch=null;preview()}};
+ g('aud').onclick=()=>{stop=true;try{GCANCEL=true}catch(e){}say('Durduruluyor…')};
+ g('aur').onclick=()=>{if(run)return;LS.set('ytlast','');preview();say('Plan sıfırlandı; sıradaki video en yakın saate gider.')};
 })();
 </script>
 </body></html>
