@@ -1859,18 +1859,18 @@ $('wmo').addEventListener('input',()=>{$('wmv').textContent='%'+$('wmo').value})
  #ytm .ytx{background:none;border:0;color:#9aa;text-decoration:underline}`;document.head.appendChild(css);
  let LASTT='';
  ['ex','go'].forEach(i=>{const e=g(i);if(e)e.addEventListener('click',()=>{LASTT=g('tx')?g('tx').value:LASTT},true)});
- function show(){
+ function show(tt){
   const txt=(g('tx')&&g('tx').value.trim())||LASTT;const r=build(txt);if(!r)return;
   const old=g('ytm');if(old)old.remove();
   const m=document.createElement('div');m.id='ytm';
-  const all=r.titles[0];
-  m.innerHTML='<div class="ytb"><h3>Başlık ve etiketler</h3><textarea id="ytall" rows="4"></textarea><button type="button" class="ytp" id="yta">Kopyala</button><button type="button" class="ytx" id="ytc">Kapat</button></div>';
+  const all=tt?r.titles[0]+' #fyp #keşfet':r.titles[0];
+  m.innerHTML='<div class="ytb"><h3>'+(tt?'TikTok açıklaması ve etiketler':'Başlık ve etiketler')+'</h3><textarea id="ytall" rows="4"></textarea><button type="button" class="ytp" id="yta">Kopyala</button><button type="button" class="ytx" id="ytc">Kapat</button></div>';
   document.body.appendChild(m);
   g('ytall').value=all;
   g('yta').onclick=function(){cp(g('ytall').value,this)};
   g('ytc').onclick=()=>m.remove();
  }
- document.addEventListener('click',e=>{const a=e.target&&e.target.closest?e.target.closest('a[download]'):null;if(!a||!/\.mp4$/i.test(a.download||'')||/-tiktok\.mp4$/i.test(a.download))return;setTimeout(show,250)},true);
+ document.addEventListener('click',e=>{const a=e.target&&e.target.closest?e.target.closest('a[download]'):null;if(!a||!/\.mp4$/i.test(a.download||''))return;const tt=/-tiktok\.mp4$/i.test(a.download);setTimeout(()=>show(tt),250)},true);
 })();
 </script>
 <script>
