@@ -1399,11 +1399,17 @@ const vpv=()=>({p:+$('vpi').value||1,s:+$('vsi').value||1});
 const vfxLbl=()=>{const p=vpv();$('vpl').textContent=Math.abs(p.p-1)<.015?'Normal':(p.p>1?'İnce +':'Kalın −')+Math.round(Math.abs(p.p-1)*100)+'%';$('vsl').textContent=p.s.toFixed(2)+'x'};
 ['vpi','vsi'].forEach(k=>$(k).addEventListener('input',vfxLbl));vfxLbl();
 ['vpi','vsi','vo','vst'].forEach(k=>$(k).addEventListener('change',()=>{if(buf&&buf===TB){buf=null;TB=null;segs=null;segTxt='';try{aeInit()}catch(e){}}}));
-function wsola(x,tempo,sr){const N=Math.round(sr*.04)&~1,Hs=N/2,tol=Math.round(sr*.012),win=new Float32Array(N);for(let i=0;i<N;i++)win[i]=.5-.5*Math.cos(2*Math.PI*i/N);
- const outLen=Math.ceil(x.length/tempo),y=new Float32Array(outLen+N),ws=new Float32Array(outLen+N);let prev=0;
- for(let k=0;;k++){const op=k*Hs;if(op>=outLen)break;const nom=Math.round(op*tempo);if(nom>=x.length-N)break;let best=nom;
-  if(k>0){const tg=prev+Hs;if(tg+N<x.length){let bc=-1e18;const a=Math.max(0,nom-tol),b=Math.min(x.length-N,nom+tol);for(let q=a;q<=b;q+=2){let c=0;for(let i=0;i<N;i+=4)c+=x[q+i]*x[tg+i];if(c>bc){bc=c;best=q}}}}
-  for(let i=0;i<N;i++){y[op+i]+=x[best+i]*win[i];ws[op+i]+=win[i]}prev=best}
+function wsola(x,tempo,sr){
+ const N=Math.round(sr*.032)&~3,Hs=N>>2,tol=Math.round(sr*.010),win=new Float32Array(N);
+ for(let i=0;i<N;i++)win[i]=.5-.5*Math.cos(2*Math.PI*i/N);
+ const xl=x.length,xp=new Float32Array(xl+N*2+tol*2);xp.set(x,tol);const B=tol;
+ const outLen=Math.ceil(xl/tempo),y=new Float32Array(outLen+N*2),ws=new Float32Array(outLen+N*2),L=N>>1;let prev=-1;
+ for(let k=0;;k++){const op=k*Hs;if(op>=outLen)break;const nom=Math.round(op*tempo);if(nom>=xl)break;let best=nom;
+  if(prev>=0){const tg=prev+Hs;let e2=0;for(let i=0;i<L;i+=2)e2+=xp[B+tg+i]*xp[B+tg+i];
+   if(e2>1e-9){let bc=-1e18;const a=Math.max(-tol,nom-tol),b=Math.min(xl-1,nom+tol);
+    for(let q=a;q<=b;q++){let c=0,e1=0;for(let i=0;i<L;i+=2){const u=xp[B+q+i];c+=u*xp[B+tg+i];e1+=u*u}
+     const nc=c/Math.sqrt(e1*e2+1e-12)-Math.abs(q-nom)*2e-6;if(nc>bc){bc=nc;best=q}}}}
+  for(let i=0;i<N;i++){y[op+i]+=xp[B+best+i]*win[i];ws[op+i]+=win[i]}prev=best}
  const o=new Float32Array(outLen);for(let i=0;i<outLen;i++)o[i]=ws[i]>1e-3?y[i]/ws[i]:0;return o}
 /* ---- Ses tutarlılığı + anlatım stili ---- */
 const VST={
